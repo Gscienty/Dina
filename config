@@ -1,4 +1,19 @@
+ZOO_PATH="../../apache-zookeeper-3.5.6/zookeeper-client/zookeeper-client-c"
+
 ngx_addon_name=ngx_http_dina_module
 HTTP_MODULES="$HTTP_MODULES ngx_http_dina_module"
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
-                $ngx_addon_dir/ngx_http_dina_module_conf.c "
+                $ngx_addon_dir/ngx_http_dina_conf.c \
+                $ngx_addon_dir/ngx_http_dina_discovery.c \
+                $ngx_addon_dir/ngx_http_dina_expect_resp.c \
+                "
+NGX_ADDON_DEPS="$NGX_ADDON_DEPS \
+                $ngx_addon_dir/ngx_http_dina_conf.h \
+                $ngx_addon_dir/ngx_http_dina_discovery.h \
+                $ngx_addon_dir/ngx_http_dina_expect_resp.h \
+                "
+CFLAGS="$CFLAGS -I$ZOO_PATH/include -I$ZOO_PATH/generated"
+
+CORE_LIBS="$CORE_LIBS \
+           -L$ZOO_PATH -lzookeeper -lhashtable -lm\
+           "
