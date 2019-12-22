@@ -6,11 +6,13 @@ NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
                 $ngx_addon_dir/ngx_http_dina_conf.c \
                 $ngx_addon_dir/ngx_http_dina_discovery.c \
                 $ngx_addon_dir/ngx_http_dina_expect_resp.c \
+                $ngx_addon_dir/ngx_http_dina_upstream.c \
                 "
 NGX_ADDON_DEPS="$NGX_ADDON_DEPS \
                 $ngx_addon_dir/ngx_http_dina_conf.h \
                 $ngx_addon_dir/ngx_http_dina_discovery.h \
                 $ngx_addon_dir/ngx_http_dina_expect_resp.h \
+                $ngx_addon_dir/ngx_http_dina_upstream.h \
                 "
 CFLAGS="$CFLAGS -I$ZOO_PATH/include -I$ZOO_PATH/generated"
 

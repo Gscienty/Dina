@@ -2,9 +2,11 @@
 #include "ngx_http_dina_conf.h"
 #include "ngx_http_dina_discovery.h"
 #include "ngx_http_dina_expect_resp.h"
+#include "ngx_http_dina_upstream.h"
 
 static char *ngx_http_dina_service_handler(ngx_conf_t *, ngx_command_t *, void *);
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *);
+static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const, ngx_http_request_t *const);
 
 static ngx_command_t ngx_http_dina_module_commands[] = {
     {
@@ -88,26 +90,7 @@ void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf) {
 }
 
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *r) {
-    char cnt[512];
-    ngx_str_t discv = { 0, (u_char *) &cnt };
-    ngx_str_t service_name = { 0, NULL };
-    ngx_http_dina_module_loc_conf_t *lcf = ngx_http_get_module_loc_conf(r, ngx_http_dina_module);
-
-    if (lcf->zoo_config.static_service_name.len != 0) {
-        ngx_http_dina_discovery(&discv, &lcf->zoo_config, &lcf->zoo_config.static_service_name);
-    }
-    else {
-        if (ngx_http_script_run(r, &service_name, lcf->zoo_config.lengths->elts, 0, lcf->zoo_config.values->elts) == NULL) {
-            return NGX_ERROR;
-        }
-
-        if (ngx_http_dina_discovery(&discv, &lcf->zoo_config, &service_name) != 0) {
-            return NGX_ERROR;
-        }
-    }
-    if (discv.len == 0) {
-        return ngx_http_dina_service_not_found(r);
-    }
+    ngx_http_dina_upstream(r, ngx_http_dina_resolve);
 
     ngx_http_finalize_request(r, NGX_DONE);
     return NGX_DONE;
@@ -148,4 +131,64 @@ static char *ngx_http_dina_service_handler(ngx_conf_t *cf, ngx_command_t *cmd, v
     ngx_conf_set_str_slot(cf, cmd, &lcf->zoo_config.static_service_name);
 
     return NGX_CONF_OK;
+}
+
+static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const resolved, ngx_http_request_t *const r) {
+    ngx_str_t *discv;
+    ngx_str_t service_name = { 0, NULL };
+    ngx_http_dina_module_loc_conf_t *lcf = ngx_http_get_module_loc_conf(r, ngx_http_dina_module);
+    char *port_split;
+    int port;
+    struct sockaddr_in *in_addr = NULL;
+
+    if ((discv = ngx_palloc(r->pool, sizeof(ngx_str_t))) == NULL) {
+        return NGX_ERROR;
+    }
+    if ((discv->data = ngx_palloc(r->pool, 64)) == NULL) {
+        return NGX_ERROR;
+    }
+    memset(discv->data, 0, 64);
+
+    if (lcf->zoo_config.static_service_name.len != 0) {
+        ngx_http_dina_discovery(discv, &lcf->zoo_config, &lcf->zoo_config.static_service_name);
+    }
+    else {
+        if (ngx_http_script_run(r, &service_name, lcf->zoo_config.lengths->elts, 0, lcf->zoo_config.values->elts) == NULL) {
+            return NGX_ERROR;
+        }
+
+        if (ngx_http_dina_discovery(discv, &lcf->zoo_config, &service_name) != 0) {
+            return NGX_ERROR;
+        }
+    }
+    if (discv->len == 0) {
+        ngx_http_dina_service_not_found(r);
+        return NGX_HTTP_NOT_FOUND;
+    }
+
+    port_split = ngx_strchr(discv->data, ':');
+    if (port_split == NULL) {
+        port = 80;
+    }
+    else {
+        *port_split = 0;
+        port = atoi(port_split + 1);
+    }
+
+    if ((in_addr = ngx_palloc(r->pool, sizeof(struct sockaddr_in))) == NULL) {
+        return NGX_ERROR;
+    }
+    resolved->sockaddr = (struct sockaddr *) in_addr;
+    resolved->socklen = sizeof(struct sockaddr_in);
+    resolved->naddrs = 1;
+    resolved->port = port;
+
+    in_addr->sin_family = AF_INET;
+    in_addr->sin_port = htons(port);
+    inet_aton((const char *) discv->data, &in_addr->sin_addr);
+
+    discv->len = strlen((const char *) discv->data);
+    ngx_http_set_ctx(r, discv, ngx_http_dina_module);
+
+    return NGX_OK;
 }
