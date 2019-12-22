@@ -4,7 +4,6 @@
 
 static void zookeeper_watcher(zhandle_t *, int, int, const char *, void *);
 static void zookeeper_strings_completion(int, const struct String_vector *, const void *);
-static inline void zookeeper_assemble_discovery_path(ngx_str_t *const, const ngx_str_t *const, const ngx_str_t *const);
 
 struct strings_completion_result {
     sem_t *sem;
@@ -15,8 +14,6 @@ int ngx_http_dina_discovery(ngx_str_t *const result, const ngx_http_dina_zoo_con
     zhandle_t *zh;
     clientid_t cid;
     sem_t sem;
-    char path_cnt[512] = { 0 };
-    ngx_str_t path = { 0, (u_char *) path_cnt };
     struct strings_completion_result sc = { &sem, result };
     sem_init(&sem, 0, 0);
 
@@ -25,8 +22,7 @@ int ngx_http_dina_discovery(ngx_str_t *const result, const ngx_http_dina_zoo_con
     if (!zh) {
         return -1;
     }
-    zookeeper_assemble_discovery_path(&path, &zoo_config->root, service_name);
-    zoo_aget_children(zh, (const char *) zoo_config->root.data, 1, zookeeper_strings_completion, &sc);
+    zoo_aget_children(zh, (const char *) service_name->data, 1, zookeeper_strings_completion, &sc);
     sem_wait(&sem);
     return 0;
 }
@@ -56,10 +52,3 @@ finish:
     sem_post(sc->sem);
 }
 
-static inline void zookeeper_assemble_discovery_path(ngx_str_t *const ret, const ngx_str_t *const base, const ngx_str_t *const service_name) {
-    memcpy(ret->data, base->data, base->len);
-    ret->len = base->len;
-    ret->data[ret->len++] = '/';
-    memcpy(ret->data + ret->len, service_name->data, service_name->len);
-    ret->len += service_name->len;
-}
