@@ -3,7 +3,8 @@
 #include "ngx_http_dina_discovery.h"
 #include "ngx_http_dina_expect_resp.h"
 
-static char *ngx_http_dina_command_handler(ngx_conf_t *, ngx_command_t *, void *);
+static char *ngx_http_dina_run_handler(ngx_conf_t *, ngx_command_t *, void *);
+static char *ngx_http_dina_service_handler(ngx_conf_t *, ngx_command_t *, void *);
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *);
 
 static ngx_command_t ngx_http_dina_module_commands[] = {
@@ -12,7 +13,7 @@ static ngx_command_t ngx_http_dina_module_commands[] = {
         NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
         ngx_conf_set_str_slot,
         NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_dina_module_loc_conf_t, zk_addr),
+        offsetof(ngx_http_dina_module_loc_conf_t, zoo_config.addr),
         NULL
     },
     {
@@ -20,13 +21,21 @@ static ngx_command_t ngx_http_dina_module_commands[] = {
         NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
         ngx_conf_set_str_slot,
         NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_dina_module_loc_conf_t, zk_root),
+        offsetof(ngx_http_dina_module_loc_conf_t, zoo_config.root),
+        NULL
+    },
+    {
+        ngx_string("dina_service"),
+        NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
+        ngx_http_dina_service_handler,
+        NGX_HTTP_LOC_CONF_OFFSET,
+        0,
         NULL
     },
     {
         ngx_string("dina_run"),
         NGX_HTTP_LOC_CONF | NGX_CONF_NOARGS,
-        ngx_http_dina_command_handler,
+        ngx_http_dina_run_handler,
         NGX_HTTP_LOC_CONF_OFFSET,
         0,
         NULL
@@ -67,10 +76,10 @@ void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf) {
         return NULL;
     }
 
-    loc_conf->zk_addr.data = NULL;
-    loc_conf->zk_addr.len = 0;
-    loc_conf->zk_root.data = NULL;
-    loc_conf->zk_addr.len = 0;
+    loc_conf->zoo_config.addr.data = NULL;
+    loc_conf->zoo_config.addr.len = 0;
+    loc_conf->zoo_config.root.data = NULL;
+    loc_conf->zoo_config.root.len = 0;
 
     loc_conf->upstream.connect_timeout = 60000;
     loc_conf->upstream.send_timeout = 60000;
@@ -92,11 +101,11 @@ void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf) {
     return loc_conf;
 }
 
-static char *ngx_http_dina_command_handler(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_http_dina_run_handler(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     (void) cmd;
     ngx_http_core_loc_conf_t *ccf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     ngx_http_dina_module_loc_conf_t *lcf = conf;
-    if (lcf->zk_addr.len == 0 || lcf->zk_root.len == 0) {
+    if (lcf->zoo_config.addr.len == 0 || lcf->zoo_config.root.len == 0) {
         return NGX_CONF_ERROR;
     }
     ccf->handler = ngx_http_dina_handler;
@@ -106,8 +115,14 @@ static char *ngx_http_dina_command_handler(ngx_conf_t *cf, ngx_command_t *cmd, v
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *r) {
     char cnt[512];
     ngx_str_t discv = { 0, (u_char *) &cnt };
+    ngx_str_t service_name = { 0, NULL };
     ngx_http_dina_module_loc_conf_t *lcf = ngx_http_get_module_loc_conf(r, ngx_http_dina_module);
-    if (ngx_http_dina_discovery(&discv, (const char *) lcf->zk_addr.data, (const char *) lcf->zk_root.data) != 0) {
+
+    if (ngx_http_script_run(r, &service_name, lcf->zoo_config.lengths->elts, 0, lcf->zoo_config.values->elts) == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_http_dina_discovery(&discv, &lcf->zoo_config, &service_name) != 0) {
         return NGX_ERROR;
     }
     if (discv.len == 0) {
@@ -116,4 +131,34 @@ static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *r) {
 
     ngx_http_finalize_request(r, NGX_DONE);
     return NGX_DONE;
+}
+
+static char *ngx_http_dina_service_handler(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    (void) cmd;
+    ngx_http_script_compile_t sc;
+    ngx_http_dina_module_loc_conf_t *lcf = conf;
+    ngx_str_t *values = cf->args->elts;
+    ngx_str_t *url = &values[1];
+    ngx_uint_t n = ngx_http_script_variables_count(url);
+
+    if (n) {
+        ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+        sc.cf = cf;
+        sc.source = url;
+        sc.lengths = &lcf->zoo_config.lengths;
+        sc.values = &lcf->zoo_config.values;
+        sc.variables = n;
+        sc.complete_lengths = 1;
+        sc.complete_values = 1;
+
+        if (ngx_http_script_compile(&sc) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+
+        return NGX_CONF_OK;
+    }
+
+    return ngx_conf_set_str_slot(cf, cmd, &lcf->zoo_config.static_service_name);
 }
