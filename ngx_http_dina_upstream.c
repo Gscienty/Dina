@@ -75,7 +75,7 @@ static ngx_int_t ngx_http_dina_upstream_create_request(ngx_http_request_t *r) {
     }
 
     len += method.len + 1
-        + 1 + 1
+        + r->uri.len + 1
         + sizeof(ngx_http_dina_upstream_http_version)
         + sizeof(CRLF) - 1;
 
@@ -106,7 +106,7 @@ static ngx_int_t ngx_http_dina_upstream_create_request(ngx_http_request_t *r) {
 
     b->last = ngx_copy(b->last, method.data, method.len);
     *b->last++ = ' ';
-    *b->last++ = '/';
+    b->last = ngx_copy(b->last, r->uri.data, r->uri.len);
     *b->last++ = ' ';
     b->last = ngx_copy(b->last, ngx_http_dina_upstream_http_version, sizeof(ngx_http_dina_upstream_http_version) - 1);
 

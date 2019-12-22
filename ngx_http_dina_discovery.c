@@ -1,6 +1,7 @@
 #include "ngx_http_dina_discovery.h"
 #include <zookeeper.h>
 #include <semaphore.h>
+#include <pthread.h>
 
 static void zookeeper_watcher(zhandle_t *, int, int, const char *, void *);
 static void zookeeper_strings_completion(int, const struct String_vector *, const void *);
@@ -12,18 +13,20 @@ struct strings_completion_result {
 
 int ngx_http_dina_discovery(ngx_str_t *const result, const ngx_http_dina_zoo_config_t *const zoo_config, const ngx_str_t *const service_name) {
     zhandle_t *zh;
-    clientid_t cid;
     sem_t sem;
     struct strings_completion_result sc = { &sem, result };
     sem_init(&sem, 0, 0);
 
     zoo_deterministic_conn_order(1);
-    zh = zookeeper_init((const char *) zoo_config->addr.data, zookeeper_watcher, 30000, &cid, NULL, 0);
+    zh = zookeeper_init((const char *) zoo_config->addr.data, zookeeper_watcher, 30000, 0, NULL, 0);
     if (!zh) {
         return -1;
     }
+
     zoo_aget_children(zh, (const char *) service_name->data, 1, zookeeper_strings_completion, &sc);
     sem_wait(&sem);
+
+    zookeeper_close(zh);
     return 0;
 }
 

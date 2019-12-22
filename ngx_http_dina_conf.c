@@ -101,8 +101,8 @@ static char *ngx_http_dina_service_handler(ngx_conf_t *cf, ngx_command_t *cmd, v
     ngx_http_script_compile_t sc;
     ngx_http_dina_module_loc_conf_t *lcf = conf;
     ngx_str_t *values = cf->args->elts;
-    ngx_str_t *url = &values[1];
-    ngx_uint_t n = ngx_http_script_variables_count(url);
+    ngx_str_t *service_name = &values[1];
+    ngx_uint_t n = ngx_http_script_variables_count(service_name);
     ngx_http_core_loc_conf_t *ccf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
     if (lcf->zoo_config.addr.len == 0) {
@@ -114,7 +114,7 @@ static char *ngx_http_dina_service_handler(ngx_conf_t *cf, ngx_command_t *cmd, v
         ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
         sc.cf = cf;
-        sc.source = url;
+        sc.source = service_name;
         sc.lengths = &lcf->zoo_config.lengths;
         sc.values = &lcf->zoo_config.values;
         sc.variables = n;
