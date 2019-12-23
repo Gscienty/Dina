@@ -82,9 +82,9 @@ Dina将根据捕获到的服务名向zookeeper询问该服务是否存在，并�
 
 Dina Nginx配置文件如下：
 ```
-worker\_processes 1;
+worker_processes 1;
 events {
-    worker\_connections 1024;
+    worker_connections 1024;
 }
 http {
     server {
@@ -106,8 +106,8 @@ from flask import Flask
 
 app = Flask(__name__)
 
-@app.route('/hello\_world')
-def hello\_world():
+@app.route('/hello_world')
+def hello_world():
     return 'hello world'
 
 
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 使用`curl`执行如下命令：
 
 ```
-curl localhost:5000/api/v1/domo/hello\_world
+curl localhost:5000/api/v1/domo/hello_world
 ```
 
 将会返回"hello world"字样，表明Dina执行与预期相符。
