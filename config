@@ -1,4 +1,7 @@
-ZOO_PATH="../../apache-zookeeper-3.5.6/zookeeper-client/zookeeper-client-c"
+if [ -z $ZOO_PATH ]; then
+    echo "[ERROR] environment ZOO_PATH not exist!"
+    exit -1
+fi;
 
 ngx_addon_name=ngx_http_dina_module
 HTTP_MODULES="$HTTP_MODULES ngx_http_dina_module"
