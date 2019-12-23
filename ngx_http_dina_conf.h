@@ -9,6 +9,7 @@ typedef struct ngx_http_dina_module_loc_conf_s ngx_http_dina_module_loc_conf_t;
 struct ngx_http_dina_module_loc_conf_s {
     ngx_http_upstream_conf_t upstream;
     ngx_http_dina_zoo_config_t zoo_config;
+    ngx_http_dina_config_param_t action;
 };
 
 void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf);

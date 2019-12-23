@@ -15,7 +15,9 @@ static ngx_int_t ngx_http_dina_upstream_input_filter_init(void *);
 static ngx_int_t ngx_http_dina_upstream_chunked_filter(ngx_event_pipe_t *, ngx_buf_t *);
 static ngx_int_t ngx_http_dina_upstream_non_buffered_chunked_filter(void *, ssize_t);
 
-ngx_int_t ngx_http_dina_upstream(ngx_http_request_t *r, ngx_int_t (*resolve) (ngx_http_upstream_resolved_t *const, ngx_http_request_t *const r)) {
+ngx_int_t ngx_http_dina_upstream(ngx_http_request_t *r,
+                                 const ngx_str_t *const action,
+                                 ngx_int_t (*resolve) (ngx_http_upstream_resolved_t *const, ngx_http_request_t *const)) {
     ngx_http_upstream_t *u;
     ngx_http_dina_module_loc_conf_t *lcf = ngx_http_get_module_loc_conf(r, ngx_http_dina_module);
     
@@ -53,6 +55,8 @@ ngx_int_t ngx_http_dina_upstream(ngx_http_request_t *r, ngx_int_t (*resolve) (ng
 
     r->main->count++;
 
+    ngx_http_set_ctx(r, (void *) action, ngx_http_dina_module);
+
     return ngx_http_read_client_request_body(r, ngx_http_upstream_init);
 }
 
@@ -66,6 +70,7 @@ static ngx_int_t ngx_http_dina_upstream_create_request(ngx_http_request_t *r) {
     ngx_str_t method;
     size_t len = 0;
     ngx_uint_t idx;
+    const ngx_str_t *action = ngx_http_get_module_ctx(r, ngx_http_dina_module);
 
     if (u->method.len) {
         method = u->method;
@@ -75,7 +80,7 @@ static ngx_int_t ngx_http_dina_upstream_create_request(ngx_http_request_t *r) {
     }
 
     len += method.len + 1
-        + r->uri.len + 1
+        + ((action != NULL && action->len != 0) ? action->len : r->uri.len) + 1
         + sizeof(ngx_http_dina_upstream_http_version)
         + sizeof(CRLF) - 1;
 
@@ -106,7 +111,12 @@ static ngx_int_t ngx_http_dina_upstream_create_request(ngx_http_request_t *r) {
 
     b->last = ngx_copy(b->last, method.data, method.len);
     *b->last++ = ' ';
-    b->last = ngx_copy(b->last, r->uri.data, r->uri.len);
+    if (action != NULL && action->len != 0) {
+        b->last = ngx_copy(b->last, action->data, action->len);
+    }
+    else {
+        b->last = ngx_copy(b->last, r->uri.data, r->uri.len);
+    }
     *b->last++ = ' ';
     b->last = ngx_copy(b->last, ngx_http_dina_upstream_http_version, sizeof(ngx_http_dina_upstream_http_version) - 1);
 

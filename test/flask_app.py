@@ -2,7 +2,7 @@ from flask import Flask
 
 app = Flask(__name__)
 
-@app.route('/api/v1/domo/hello_world')
+@app.route('/hello_world')
 def hello_world():
     return 'hello world'
 
