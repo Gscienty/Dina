@@ -77,3 +77,48 @@ Dina将根据捕获到的服务名向zookeeper询问该服务是否存在，并�
 
 选填项，如果缺省该配置项，Dina将会把HTTP请求中的uri原样转发至对应的HTTP服务中。
 如果填写相应的配置项，Dina在转发HTTP请求时，会将uri按照dina\_action的格式进行改写。
+
+### 示例
+
+Dina Nginx配置文件如下：
+```
+worker\_processes 1;
+events {
+    worker\_connections 1024;
+}
+http {
+    server {
+        listen 5000;
+    }
+    location ~ /api/v1/(.*?)/(.*)$ {
+        dina_zk 127.0.0.1:2181;
+        dina_service /dina/service/$1;
+        dina_action /$2;
+    }
+}
+
+```
+
+服务端运行一flask HTTP服务，并在zookeeper中注册该flask HTTP服务名为domo，即 `/dina/service/domo/127.0.0.1:10010`，该HTTP服务具体实现代码如下：
+
+```
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/hello\_world')
+def hello\_world():
+    return 'hello world'
+
+
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=10010)
+```
+
+使用`curl`执行如下命令：
+
+```
+curl localhost:5000/api/v1/domo/hello\_world
+```
+
+将会返回"hello world"字样，表明Dina执行与预期相符。
