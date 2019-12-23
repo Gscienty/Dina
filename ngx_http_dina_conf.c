@@ -6,6 +6,7 @@
 
 static char *ngx_http_dina_service_handler(ngx_conf_t *, ngx_command_t *, void *);
 static char *ngx_http_dina_action_handler(ngx_conf_t *, ngx_command_t *, void *);
+static char *ngx_http_dina_identity_handler(ngx_conf_t *, ngx_command_t *, void *);
 static char *ngx_http_dina_conf_set_param_slot(ngx_conf_t *, ngx_command_t *, ngx_http_dina_config_param_t *);
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *);
 static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const, ngx_http_request_t *const);
@@ -32,7 +33,7 @@ static ngx_command_t ngx_http_dina_module_commands[] = {
         NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
         ngx_http_dina_action_handler,
         NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_dina_module_loc_conf_t, action),
+        0,
         NULL
     },
     ngx_null_command
@@ -112,6 +113,7 @@ static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *r) {
         ngx_http_dina_service_not_found(r);
         return NGX_DONE;
     }
+
     if (lcf->action.static_param.len != 0) {
         action = lcf->action.static_param;
     }
@@ -176,13 +178,20 @@ static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const resol
     memset(discv->data, 0, 64);
 
     if (lcf->zoo_config.service.static_param.len != 0) {
+        if (ngx_strchr(lcf->zoo_config.service.static_param.data, '@') != NULL) {
+            ngx_http_dina_service_unauthorized(r);
+            return NGX_HTTP_UNAUTHORIZED;
+        }
         ngx_http_dina_discovery(discv, &lcf->zoo_config, &lcf->zoo_config.service.static_param);
     }
     else {
         if (ngx_http_script_run(r, &service_name, lcf->zoo_config.service.lengths->elts, 0, lcf->zoo_config.service.values->elts) == NULL) {
             return NGX_ERROR;
         }
-
+        if (ngx_strchr(service_name.data, '@') != NULL) {
+            ngx_http_dina_service_unauthorized(r);
+            return NGX_HTTP_UNAUTHORIZED;
+        }
         if (ngx_http_dina_discovery(discv, &lcf->zoo_config, &service_name) != 0) {
             return NGX_ERROR;
         }

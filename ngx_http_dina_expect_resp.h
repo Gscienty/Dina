@@ -4,5 +4,6 @@
 #include <ngx_http.h>
 
 int ngx_http_dina_service_not_found(ngx_http_request_t *const r);
+int ngx_http_dina_service_unauthorized(ngx_http_request_t *const r);
 
 #endif
