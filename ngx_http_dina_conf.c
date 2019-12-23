@@ -6,7 +6,6 @@
 
 static char *ngx_http_dina_service_handler(ngx_conf_t *, ngx_command_t *, void *);
 static char *ngx_http_dina_action_handler(ngx_conf_t *, ngx_command_t *, void *);
-static char *ngx_http_dina_identity_handler(ngx_conf_t *, ngx_command_t *, void *);
 static char *ngx_http_dina_conf_set_param_slot(ngx_conf_t *, ngx_command_t *, ngx_http_dina_config_param_t *);
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *);
 static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const, ngx_http_request_t *const);
