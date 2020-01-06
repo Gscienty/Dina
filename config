@@ -20,5 +20,5 @@ NGX_ADDON_DEPS="$NGX_ADDON_DEPS \
 CFLAGS="$CFLAGS -I$ZOO_PATH/include -I$ZOO_PATH/generated"
 
 CORE_LIBS="$CORE_LIBS \
-           -L$ZOO_PATH -lzookeeper -lhashtable -lm\
+           -L$ZOO_PATH/.libs -lzookeeper_mt -lhashtable -lm\
            "
