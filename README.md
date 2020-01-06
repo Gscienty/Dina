@@ -122,3 +122,11 @@ curl localhost:5000/api/v1/domo/hello_world
 ```
 
 将会返回"hello world"字样，表明Dina执行与预期相符。
+
+
+## Docker 运行所需参数
+在使用Docker运行Dina过程中，需要给Dina Container传入一个环境变量ZOO\_BASE\_PATH（以'/'结尾），该环境变量用于重写nginx.conf中的`dina_service`。并link ZooKeeper Container。
+示例：
+```
+docker run -eZOO_BASE_PATH=/ --link 1f:ZOO -p 127.0.0.1:8080:8080 -d dina:v1.0
+```
