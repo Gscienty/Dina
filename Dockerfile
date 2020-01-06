@@ -1,8 +1,8 @@
 FROM alpine:latest
 
 ADD . /tmp/dina-module
-RUN apk sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
-        && apk --no-cache add curl cmake gcc openjdk8 autoconf automake libtool libc-dev cppunit-dev make pcre-dev pcre \
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
+        && apk --no-cache add curl cmake gcc openjdk8 autoconf automake libtool libc-dev cppunit-dev make pcre-dev pcre gettext \
         && curl -o /tmp/apache-zookeeper-3.5.6.tar.gz https://mirrors.tuna.tsinghua.edu.cn/apache/zookeeper/zookeeper-3.5.6/apache-zookeeper-3.5.6.tar.gz \
         && curl https://mirrors.tuna.tsinghua.edu.cn/apache/ant/binaries/apache-ant-1.9.14-bin.tar.gz -o /tmp/apache-ant-1.9.14-bin.tar.gz \
         && tar zxvf /tmp/apache-zookeeper-3.5.6.tar.gz -C /tmp/ \
@@ -63,6 +63,7 @@ RUN apk sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/reposito
         && make \
         && make install \
         && cp /tmp/dina-module/nginx.template.conf /usr/local/nginx/conf/nginx.template.conf \
-        && apk del curl cmake gcc openjdk8 autoconf automake libtool libc-dev cppunit-dev make pcre-dev
+        && apk del curl cmake gcc openjdk8 autoconf automake libtool libc-dev cppunit-dev make pcre-dev \
+        && rm -rf /tmp/*
 EXPOSE 8080
-CMD envsubst < /usr/local/nginx/conf/nginx.template.conf > /usr/local/nginx/conf/nginx.conf && /usr/local/nginx/sbin/nginx -g "daemon off;"
+ENTRYPOINT envsubst < /usr/local/nginx/conf/nginx.template.conf > /usr/local/nginx/conf/nginx.conf && /usr/local/nginx/sbin/nginx -g "daemon off;"
