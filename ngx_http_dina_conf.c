@@ -9,14 +9,16 @@ static char *ngx_http_dina_action_handler(ngx_conf_t *, ngx_command_t *, void *)
 static char *ngx_http_dina_conf_set_param_slot(ngx_conf_t *, ngx_command_t *, ngx_http_dina_config_param_t *);
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *);
 static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const, ngx_http_request_t *const);
+static void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf);
+static void *ngx_http_dina_module_create_srv_conf(ngx_conf_t *const cf);
 
 static ngx_command_t ngx_http_dina_module_commands[] = {
     {
         ngx_string("dina_zk"),
-        NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
+        NGX_HTTP_SRV_CONF | NGX_CONF_TAKE1,
         ngx_conf_set_str_slot,
-        NGX_HTTP_LOC_CONF_OFFSET,
-        offsetof(ngx_http_dina_module_loc_conf_t, zoo_config.addr),
+        NGX_HTTP_SRV_CONF_OFFSET,
+        offsetof(ngx_http_dina_module_srv_conf_t, zoo_addr),
         NULL
     },
     {
@@ -43,7 +45,7 @@ static ngx_http_module_t ngx_http_dina_module_ctx = {
     NULL,
     NULL,
     NULL,
-    NULL,
+    ngx_http_dina_module_create_srv_conf,
     NULL,
     ngx_http_dina_module_create_loc_conf,
     NULL
@@ -64,16 +66,13 @@ ngx_module_t ngx_http_dina_module = {
     NGX_MODULE_V1_PADDING
 };
 
-void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf) {
+static void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf) {
     ngx_http_dina_module_loc_conf_t *loc_conf = NULL;
 
     if ((loc_conf = ngx_palloc(cf->pool, sizeof(*loc_conf))) == NULL) {
         return NULL;
     }
 
-    loc_conf->zoo_config.addr.data = NULL;
-    loc_conf->zoo_config.addr.len = 0;
-    
     loc_conf->action.lengths = NULL;
     loc_conf->action.values = NULL;
     loc_conf->action.static_param.data = NULL;
@@ -102,6 +101,16 @@ void *ngx_http_dina_module_create_loc_conf(ngx_conf_t *const cf) {
     loc_conf->upstream.pass_headers = NGX_CONF_UNSET_PTR;
 
     return loc_conf;
+}
+
+static void *ngx_http_dina_module_create_srv_conf(ngx_conf_t *const cf) {
+    ngx_http_dina_module_srv_conf_t *srv_conf = NULL;
+    if ((srv_conf = ngx_palloc(cf->pool, sizeof(*srv_conf))) == NULL) {
+        return NULL;
+    }
+    srv_conf->zoo_addr.data = NULL;
+    srv_conf->zoo_addr.len = 0;
+    return srv_conf;
 }
 
 static ngx_int_t ngx_http_dina_handler(ngx_http_request_t *r) {
@@ -164,6 +173,7 @@ static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const resol
     ngx_str_t *discv;
     ngx_str_t service_name = { 0, NULL };
     ngx_http_dina_module_loc_conf_t *lcf = ngx_http_get_module_loc_conf(r, ngx_http_dina_module);
+    ngx_http_dina_module_srv_conf_t *scf = ngx_http_get_module_srv_conf(r, ngx_http_dina_module);
     char *port_split;
     int port;
     struct sockaddr_in *in_addr = NULL;
@@ -181,7 +191,7 @@ static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const resol
             ngx_http_dina_service_unauthorized(r);
             return NGX_HTTP_UNAUTHORIZED;
         }
-        ngx_http_dina_discovery(discv, &lcf->zoo_config, &lcf->zoo_config.service.static_param);
+        ngx_http_dina_discovery(discv, &scf->zoo_addr, &lcf->zoo_config.service.static_param);
     }
     else {
         if (ngx_http_script_run(r, &service_name, lcf->zoo_config.service.lengths->elts, 0, lcf->zoo_config.service.values->elts) == NULL) {
@@ -191,7 +201,7 @@ static ngx_int_t ngx_http_dina_resolve(ngx_http_upstream_resolved_t *const resol
             ngx_http_dina_service_unauthorized(r);
             return NGX_HTTP_UNAUTHORIZED;
         }
-        if (ngx_http_dina_discovery(discv, &lcf->zoo_config, &service_name) != 0) {
+        if (ngx_http_dina_discovery(discv, &scf->zoo_addr, &service_name) != 0) {
             return NGX_ERROR;
         }
     }

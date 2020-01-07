@@ -11,14 +11,14 @@ struct strings_completion_result {
     ngx_str_t *result;
 };
 
-int ngx_http_dina_discovery(ngx_str_t *const result, const ngx_http_dina_zoo_config_t *const zoo_config, const ngx_str_t *const service_name) {
+int ngx_http_dina_discovery(ngx_str_t *const result, const ngx_str_t *const zoo_addr, const ngx_str_t *const service_name) {
     zhandle_t *zh;
     sem_t sem;
     struct strings_completion_result sc = { &sem, result };
     sem_init(&sem, 0, 0);
 
     zoo_deterministic_conn_order(1);
-    zh = zookeeper_init((const char *) zoo_config->addr.data, zookeeper_watcher, 30000, 0, NULL, 0);
+    zh = zookeeper_init((const char *) zoo_addr->data, zookeeper_watcher, 30000, 0, NULL, 0);
     if (!zh) {
         return -1;
     }

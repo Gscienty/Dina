@@ -12,11 +12,9 @@ struct ngx_http_dina_config_param_s {
 
 typedef struct ngx_http_dina_zoo_config_s ngx_http_dina_zoo_config_t;
 struct ngx_http_dina_zoo_config_s {
-    ngx_str_t addr;
-
     ngx_http_dina_config_param_t service;
 };
 
-int ngx_http_dina_discovery(ngx_str_t *const result, const ngx_http_dina_zoo_config_t *const zoo_config, const ngx_str_t *const service_name);
+int ngx_http_dina_discovery(ngx_str_t *const result, const ngx_str_t *const zoo_addr, const ngx_str_t *const service_name);
 
 #endif
