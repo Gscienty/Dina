@@ -89,8 +89,8 @@ events {
 http {
     server {
         listen 5000;
+        dina_zk 127.0.0.1:2181;
         location ~ /api/v1/(.*?)/(.*)$ {
-            dina_zk 127.0.0.1:2181;
             dina_service /dina/service/$1;
             dina_action /$2;
         }
